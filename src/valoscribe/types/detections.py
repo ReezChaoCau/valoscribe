@@ -102,14 +102,3 @@ class KillfeedAgentDetection(BaseModel):
     victim_side: str = Field(..., description="Side of victim: 'attack' or 'defense'")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence (0-1)")
     weapon: Optional[str] = Field(None, description="Weapon used (TODO)")
-
-
-class KillEvent(BaseModel):
-    """Information about a kill event from killfeed."""
-
-    killer: str = Field(..., description="Player name who got the kill")
-    victim: str = Field(..., description="Player name who was killed")
-    weapon: Optional[str] = Field(None, description="Weapon used")
-    headshot: bool = Field(False, description="Whether it was a headshot")
-    timestamp_ms: float = Field(..., description="Timestamp in video (milliseconds)")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence (0-1)")

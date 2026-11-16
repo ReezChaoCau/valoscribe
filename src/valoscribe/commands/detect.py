@@ -1088,7 +1088,6 @@ def detect_armor_template(
             debug_output_dir.mkdir(parents=True, exist_ok=True)
             typer.echo(f"Debug crops will be saved to: {debug_output_dir}")
             # Clear directory
-            import shutil
             if debug_output_dir.exists():
                 for file in debug_output_dir.glob("*.png"):
                     file.unlink()
@@ -1924,7 +1923,6 @@ def detect_abilities_preround(
     ),
 ) -> None:
     """Detect pre-round ability charges from a Valorant VOD using blob detection."""
-    from valoscribe.detectors.preround_ability_detector import PreroundAbilityDetector
 
     setup_logging()
 
@@ -2217,7 +2215,6 @@ def detect_ultimates_preround(
     ),
 ) -> None:
     """Detect pre-round ultimate charges from a Valorant VOD using blob detection."""
-    from valoscribe.detectors.preround_ultimate_detector import PreroundUltimateDetector
 
     setup_logging()
 
@@ -3595,7 +3592,6 @@ def detect_ultimates(
             if debug_crops:
                 debug_output_dir.mkdir(parents=True, exist_ok=True)
                 typer.echo(f"Debug crops will be saved to: {debug_output_dir}")
-                import shutil
                 # Clear directory
                 if debug_output_dir.exists():
                     for file in debug_output_dir.glob("*.png"):

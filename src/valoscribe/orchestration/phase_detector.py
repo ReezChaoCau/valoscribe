@@ -10,7 +10,6 @@ from valoscribe.detectors.template_timer_detector import TemplateTimerDetector
 from valoscribe.detectors.template_spike_detector import TemplateSpikeDetector
 from valoscribe.detectors.template_score_detector import TemplateScoreDetector
 from valoscribe.detectors.preround_credits_detector import PreroundCreditsDetector
-from valoscribe.types.detections import TimerInfo, SpikeInfo, ScoreInfo, CreditsInfo
 from valoscribe.utils.logger import get_logger
 
 log = get_logger(__name__)
