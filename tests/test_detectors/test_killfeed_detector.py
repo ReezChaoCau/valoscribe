@@ -29,19 +29,18 @@ def entries_with_hits(*hit_slots):
 
 
 def test_prepared_templates_match_their_own_image(detector):
-    crops = [
-        np.pad(data["image"], ((4, 4), (4, 4), (0, 0)))
-        for data in detector.templates.values()
-    ]
-    for data, crop in zip(detector.templates.values(), crops):
+    for data in detector.templates.values():
+        crop = np.pad(data["image"], ((4, 4), (4, 4), (0, 0)))
         preprocessed = detector._preprocess_crop(crop)
-        result = detector._match_all_templates(crop, flipped=False)
-        assert result is not None
-        assert result[0] == data["agent"]
+        candidates = detector._match_all_templates_candidates(preprocessed, flipped=False)
+        matches = {(agent, side): confidence for agent, side, confidence in candidates}
+        assert (data["agent"], data["side"]) in matches
         score = cv2.minMaxLoc(
             cv2.matchTemplate(preprocessed, data["image_match"], detector.match_method)
         )[1]
-        assert score == pytest.approx(result[2])
+        assert matches[(data["agent"], data["side"])] == pytest.approx(
+            min(1.0, max(0.0, score))
+        )
 
 
 def test_downscaled_templates_are_cached_at_match_scale(tmp_path):

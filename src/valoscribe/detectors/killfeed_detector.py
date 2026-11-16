@@ -224,13 +224,6 @@ class KillfeedDetector:
         consecutive_empty = 0
 
         for entry_idx, entry_crop in enumerate(killfeed_entries):
-            if entry_crop.size == 0:
-                log.debug(f"Entry {entry_idx}: empty crop, skipping")
-                consecutive_empty += 1
-                if self._stop_after(consecutive_empty):
-                    break
-                continue
-
             # Preprocess once; the killer and victim passes share the same image
             preprocessed = self._preprocess_crop(entry_crop)
 
@@ -360,71 +353,6 @@ class KillfeedDetector:
         candidates.sort(key=lambda c: c[2], reverse=True)
 
         return candidates
-
-    def _match_all_templates(
-        self, crop: np.ndarray, flipped: bool = False
-    ) -> Optional[tuple[str, str, float]]:
-        """
-        Match all agent templates against a crop and return the best match.
-
-        Args:
-            crop: Cropped killfeed entry
-            flipped: If True, flip templates horizontally before matching (for victim)
-
-        Returns:
-            Tuple of (agent_name, side, confidence) for best match, or None if no match
-        """
-        # No preprocessing - use color templates directly
-        preprocessed = self._preprocess_crop(crop)
-        image_key = "image_match_flipped" if flipped else "image_match"
-
-        best_confidence = 0.0
-        best_agent = None
-        best_side = None
-
-        # Try matching each template
-        for template_key, template_data in self.templates.items():
-            template_img = template_data[image_key]
-            agent_name = template_data["agent"]
-            side = template_data["side"]
-
-            # Skip if template is larger than crop (can't match)
-            if template_img.shape[0] > preprocessed.shape[0] or template_img.shape[1] > preprocessed.shape[1]:
-                log.debug(
-                    f"Template {template_key} ({template_img.shape[:2]}) larger than crop "
-                    f"({preprocessed.shape[:2]}), skipping"
-                )
-                continue
-
-            # Color template matching - slides template across crop
-            result = cv2.matchTemplate(preprocessed, template_img, self.match_method)
-
-            # Get the best match location
-            _, max_val, _, max_loc = cv2.minMaxLoc(result)
-            confidence = float(max_val)
-
-            # Clamp to [0, 1] range
-            confidence = max(0.0, min(1.0, confidence))
-
-            log.debug(
-                f"Template {template_key} ({'flipped' if flipped else 'normal'}): "
-                f"confidence = {confidence:.3f} at position {max_loc}"
-            )
-
-            # Track best match
-            if confidence > best_confidence:
-                best_confidence = confidence
-                best_agent = agent_name
-                best_side = side
-
-        # Check if best match meets threshold
-        if best_confidence < self.min_confidence:
-            log.debug(
-                f"Best match confidence {best_confidence:.2f} below threshold {self.min_confidence}"
-            )
-            return None
-
-        return best_agent, best_side, best_confidence
 
     def _preprocess_crop(self, crop: np.ndarray) -> np.ndarray:
         """
