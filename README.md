@@ -66,7 +66,7 @@ valoscribe/
 │   ├── config/             # HUD coordinate configs (champs2025.json)
 │   ├── detectors/          # Computer vision detectors
 │   │   ├── template_*.py   # Template matching (agents, health, armor, etc.)
-│   │   ├── *_detector.py   # OCR-based detectors (killfeed, round, etc.)
+│   │   ├── *_detector.py   # Detectors (template matching, blob counting, OCR)
 │   │   └── cropper.py      # HUD region extraction
 │   ├── orchestration/      # State management and event generation
 │   │   ├── game_state_manager.py    # Main orchestration logic
@@ -179,35 +179,38 @@ Outputs team names, player names, agents, maps, VOD URLs, and starting sides.
 #### 2. Download VOD from YouTube
 
 ```bash
-valoscribe orchestrate download \
-  --youtube-url "https://www.youtube.com/watch?v=..." \
-  --output-dir ./vods \
-  --start-time 00:15:30 \
-  --end-time 01:45:20
+valoscribe download "https://www.youtube.com/watch?v=..." \
+  --output ./vods \
+  --height 1080 \
+  --fps 60 \
+  --start 930 \
+  --duration 5400
 ```
 
 Options:
-- `--start-time` / `--end-time` - Extract specific map segments (optional)
-- `--quality` - Video quality preference (default: 1080p)
+- `--output` / `-o` - Output directory (default: `videos`)
+- `--height` / `-h` - Preferred video height (default: 1080)
+- `--fps` - Preferred source FPS (default: 60)
+- `--start` / `-s` - Start time in seconds (also read from a `t=` parameter in the URL)
+- `--duration` / `-d` - Duration in seconds (default: 5400 when `--start` is set)
+- `--overwrite` - Overwrite an existing file
 
 #### 3. Process a VOD
 
 ```bash
-valoscribe orchestrate process \
-  --video-path ./vods/match.mp4 \
-  --metadata-path ./output/metadata.json \
-  --hud-config src/valoscribe/config/champs2025.json \
-  --output-dir ./series_output/match_name/map1_ascent \
-  --sample-rate 4
+valoscribe orchestrate process-vod ./vods/match.mp4 ./output/metadata.json \
+  --config src/valoscribe/config/champs2025.json \
+  --output ./series_output/match_name/map1_ascent \
+  --fps 4
 ```
 
 Key options:
-- `--video-path` - Path to downloaded VOD
-- `--metadata-path` - VLR.gg metadata JSON
-- `--hud-config` - HUD coordinate configuration (use `champs2025.json` for 2025 Champions)
-- `--output-dir` - Directory for outputs
-- `--sample-rate` - Frames per second to process (default: 4)
-- `--quiet` - Suppress progress output
+- `<video>` / `<metadata>` - Positional: downloaded VOD and VLR.gg metadata JSON
+- `--config` / `-c` - HUD coordinate configuration (use `champs2025.json` for 2025 Champions)
+- `--output` / `-o` - Directory for outputs (default: `output`)
+- `--fps` / `-f` - Frames per second to process (default: 4)
+- `--start` / `--end` - Optional processing window in seconds
+- `--quiet` / `-q` - Only print events, suppress progress messages
 
 This generates:
 - `output/event_log.jsonl` - Timestamped game events
@@ -247,23 +250,26 @@ Checks:
 Test individual detection components:
 
 ```bash
-# Test agent detection
-valoscribe detect agent \
-  --video ./vods/match.mp4 \
-  --frame 1000 \
-  --player-index 0
+# Test agent detection (pre-round scoreboard)
+valoscribe detect agents-preround ./vods/match.mp4 \
+  --start 240 \
+  --end 260 \
+  --player 0
 
 # Test killfeed detection
-valoscribe detect killfeed \
-  --video ./vods/match.mp4 \
-  --start-frame 5000 \
-  --end-frame 5100
+valoscribe detect killfeed ./vods/match.mp4 \
+  --start 5000 \
+  --end 5100
 
 # Test score detection
-valoscribe detect score \
-  --video ./vods/match.mp4 \
-  --frame 1000
+valoscribe detect score-template ./vods/match.mp4 \
+  --start 240 \
+  --end 260
 ```
+
+All `detect` commands take the video as a positional argument and a time window in seconds
+(`--start` / `--end`). Run `valoscribe detect --help` for the full list; `agents-active` is the
+exception - it takes a single still image instead of a video.
 
 ## Development
 
@@ -313,14 +319,21 @@ JSONL format with one event per line. Each event is timestamped and includes rel
 {
   "type": "kill",
   "timestamp": 45.3,
-  "killer": "TenZ",
-  "killer_agent": "Jett",
-  "victim": "aspas",
-  "victim_agent": "Raze",
-  "weapon": "Vandal",
-  "headshot": true
+  "killer_agent": "jett",
+  "killer_side": "attack",
+  "victim_agent": "raze",
+  "victim_side": "defense",
+  "confidence": 0.93,
+  "weapon": null,
+  "killer_name": "TenZ",
+  "killer_team": "Sentinels",
+  "victim_name": "aspas",
+  "victim_team": "LOUD",
+  "timers": {"game_timer": 88.0, "spike_timer": null, "post_round_timer": null}
 }
 ```
+
+`weapon` is reserved: it is always `null` today because weapon detection is not implemented.
 
 **Ability Events:**
 ```json
@@ -416,16 +429,17 @@ HUD coordinate configurations define where to find UI elements in the video fram
 
 If you need to process VODs with different HUD layouts:
 
-1. Extract template coordinates using the `extract` commands:
+1. Save crops of the HUD regions you need to re-measure:
    ```bash
-   valoscribe extract agent-icon --video ./vods/match.mp4 --frame 1000 --player-index 0
+   valoscribe crop ./vods/match.mp4 --save-crops ./hud_crops --fps 1 --max-frames 5
    ```
 
 2. Create a new config JSON with updated coordinates
 
-3. Pass your config to the `orchestrate process` command:
+3. Pass your config to the pipeline:
    ```bash
-   valoscribe orchestrate process --hud-config ./custom_config.json ...
+   valoscribe orchestrate process-vod ./vods/match.mp4 ./output/metadata.json \
+     --config ./custom_config.json
    ```
 
 ### Supported Tournaments
