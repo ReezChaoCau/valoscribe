@@ -489,7 +489,20 @@ user-visible, say "Observable: none" rather than omitting the entry.
 
 <!-- Entries, newest first -->
 
-_No merged PRs beyond the upstream history this branch starts from._
+### PR #2 — perf(killfeed): 4.6x faster matching, 1.7x end to end (2026-11-16)
+- Changed: killfeed templates are cached flipped/scaled at load, each entry is preprocessed once
+  instead of twice, and the slot scan stops after three consecutive empty entries (configurable
+  via `max_consecutive_empty_entries`; `0` scans every slot).
+- Observable: same events and frame states; the recorded 2-minute clip processes ~1.7x faster
+  (killfeed matching 343 ms -> 75 ms per frame). Validated on four extra broadcast matches with
+  zero detection differences.
+- Verified: `uv run pytest -q` (609 passed, 1 skipped) and the recorded pipeline
+  (43/43 events, 100%, identical CSV).
+
+### PR #1 — docs: add a "What Changed" section for approved PRs (2026-11-16)
+- Changed: added this section with a fixed per-PR entry format (Changed / Observable / Verified).
+- Observable: none.
+- Verified: docs only.
 
 ## Contributing
 
