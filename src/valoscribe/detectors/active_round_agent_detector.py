@@ -13,7 +13,6 @@ import cv2
 import numpy as np
 
 from valoscribe.detectors.cropper import Cropper
-from valoscribe.types.detections import AgentInfo
 from valoscribe.utils.logger import get_logger
 
 log = get_logger(__name__)
